@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sky 精霊交換トラッカー</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --heart: #f472b6;
+      --candle: #fbbf24;
+      --ac: #c084fc;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --success: #34d399;
+      --border: #334155;
+      --elder: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 12px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .tab {
+      padding: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .stat-card .label { font-size: 0.75rem; color: var(--muted); }
+    .stat-card .value { font-size: 1.35rem; font-weight: 700; }
+    .stat-card.candle .value { color: var(--candle); }
+    .stat-card.heart .value { color: var(--heart); }
+    .stat-card.ac .value { color: var(--ac); }
+    .stat-card.done .value { color: var(--success); }
+    .stat-card.elder .value { color: var(--elder); }
+    .realm-section {
+      background: var(--card);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .realm-header {
+      padding: 10px 14px;
+      background: #0f172a88;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .realm-header h2 { font-size: 1rem; }
+    .realm-header .totals { font-size: 0.8rem; color: var(--muted); }
+    .spirit-list { padding: 8px; }
+    .spirit-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      background: #0f172a44;
+      font-size: 0.9rem;
+    }
+    .spirit-row.done { opacity: 0.5; }
+    .spirit-row.t2 { border-left: 3px solid var(--accent2); }
+    .spirit-row input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--success); cursor: pointer;
+    }
+    .spirit-name { font-weight: 500; }
+    .cost { font-size: 0.8rem; white-space: nowrap; }
+    .cost.candle { color: var(--candle); }
+    .cost.heart { color: var(--heart); }
+    .cost.ac { color: var(--ac); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 12px 0;
+      align-items: center;
+    }
+    button, .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: #ef4444; color: white; }
+    .note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 12px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .season-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .season-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .season-card h3 { font-size: 0.95rem; margin-bottom: 8px; color: var(--accent2); }
+    .custom-spirit {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 500; }
+    .progress-bar {
+      height: 6px;
+      background: #0f172a;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      transition: width 0.3s;
+    }
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .mode-toggle button {
+      padding: 6px 14px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .mode-toggle button.active {
+      background: var(--accent2);
+      color: #0f172a;
+      font-weight: 600;
+    }
+    .elder-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      background: #0f172a44;
+      font-size: 0.9rem;
+    }
+    .elder-row.done { opacity: 0.5; }
+    .badge {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--accent2);
+      color: #0f172a;
+      margin-left: 4px;
+    }
+    @media (max-width: 600px) {
+      .spirit-row {
+        grid-template-columns: auto 1fr;
+        gap: 4px;
+      }
+      .spirit-row .cost { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+  <h1>✦ Sky 精霊交換トラッカー</h1>
+  <p class="subtitle">恒常・大精霊・季節精霊の全交換要件（Tier2含む）を管理</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="regular">恒常精霊</div>
+    <div class="tab" data-tab="elders">大精霊</div>
+    <div class="tab" data-tab="summary">地方別・総合</div>
+    <div class="tab" data-tab="seasonal">季節精霊</div>
+    <div class="tab" data-tab="data">データ管理</div>
+  </div>
+
+  <div id="panel-regular" class="panel active">
+    <div class="toolbar">
+      <div class="mode-toggle">
+        <button id="mode-base" class="active" onclick="setMode('base')">星座100%のみ</button>
+        <button id="mode-full" onclick="setMode('full')">全交換 (Tier2込)</button>
+      </div>
+    </div>
+    <div class="summary-bar" id="regular-summary"></div>
+    <div id="regular-list"></div>
+    <p class="note">※ 「星座100%のみ」はConstellation完成に必要なコスト。「全交換」はTier2ケープ等も含む全アイテムのコストです。T2バッジ付き精霊がTier2あり。</p>
+  </div>
+
+  <div id="panel-elders" class="panel">
+    <div class="summary-bar" id="elder-summary"></div>
+    <div class="realm-section">
+      <div class="realm-header"><h2>大精霊 究極の贈り物</h2></div>
+      <div class="spirit-list" id="elder-list"></div>
+    </div>
+    <p class="note">
+      星座100%達成後、原罪クリア→天空で大精霊と交換。<br>
+      フェイスアクセは光の翼喪失を1回防ぐ効果あり（砕けたら修復必要）。
+    </p>
+  </div>
+
+  <div id="panel-summary" class="panel">
+    <div class="toolbar">
+      <div class="mode-toggle">
+        <button id="sum-mode-base" class="active" onclick="setMode('base')">星座100%のみ</button>
+        <button id="sum-mode-full" onclick="setMode('full')">全交換 (Tier2込)</button>
+      </div>
+    </div>
+    <div class="summary-bar" id="realm-summary"></div>
+    <div class="realm-section">
+      <div class="realm-header"><h2>常設総合（全地方＋大精霊）</h2></div>
+      <div class="spirit-list" id="total-summary"></div>
+    </div>
+  </div>
+
+  <div id="panel-seasonal" class="panel">
+    <p class="note" style="margin-bottom:12px;">
+      季節精霊は再訪時にコストが変わるため、カスタム追加で管理できます。
+    </p>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="addSeasonalSpirit()">＋ 精霊を追加</button>
+    </div>
+    <div id="seasonal-list" class="season-grid"></div>
+  </div>
+
+  <div id="panel-data" class="panel">
+    <div class="toolbar">
+      <button class="btn-primary" onclick="exportData()">📥 エクスポート (JSON)</button>
+      <button class="btn-secondary" onclick="importData()">📤 インポート</button>
+      <button class="btn-danger" onclick="resetAll()">🗑 全リセット</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+    <p class="note">データは localStorage に自動保存。エクスポートJSONで他端末に移行可能。</p>
+    <div class="realm-section" style="margin-top:16px;">
+      <div class="realm-header"><h2>保存データプレビュー</h2></div>
+      <pre id="data-preview" style="padding:12px;font-size:0.75rem;overflow:auto;max-height:300px;color:var(--muted);"></pre>
+    </div>
+  </div>
+
+  <script>
+    const REALMS = {
+      "孤島": { en: "Isle of Dawn", spirits: [
+        { id: "pointing_candlemaker", name: "指差すキャンドル職人", base: {c:14,h:4,ac:1}, full: {c:14,h:4,ac:1} },
+        { id: "rejecting_voyager", name: "固辞する航行者", base: {c:14,h:4,ac:1}, full: {c:14,h:4,ac:1} },
+        { id: "ushering_stargazer", name: "先導する星読み", base: {c:14,h:4,ac:1}, full: {c:14,h:4,ac:1} },
+      ]},
+      "草原": { en: "Daylight Prairie", spirits: [
+        { id: "applauding_bellmaker", name: "賞賛する鐘の造り手", base: {c:16,h:3,ac:1}, full: {c:16,h:3,ac:1} },
+        { id: "bird_whisperer", name: "鳥の語り部", base: {c:9,h:6,ac:2}, full: {c:9,h:6,ac:2} },
+        { id: "butterfly_charmer", name: "蝶々使い", base: {c:14,h:7,ac:1}, full: {c:14,h:16,ac:4}, t2: true },
+        { id: "ceremonial_worshiper", name: "儀式の崇拝者", base: {c:9,h:0,ac:1}, full: {c:9,h:0,ac:1} },
+        { id: "exhausted_dock_worker", name: "疲れた港の労働者", base: {c:20,h:3,ac:1}, full: {c:20,h:3,ac:1} },
+        { id: "laughing_light_catcher", name: "笑う光の捕り手", base: {c:20,h:10,ac:2}, full: {c:20,h:10,ac:2} },
+        { id: "slumbering_shipwright", name: "眠る船大工", base: {c:14,h:3,ac:1}, full: {c:14,h:3,ac:1} },
+        { id: "waving_bellmaker", name: "手を振る鐘の造り手", base: {c:14,h:7,ac:2}, full: {c:20,h:7,ac:8}, t2: true },
+      ]},
+      "雨林": { en: "Hidden Forest", spirits: [
+        { id: "apologetic_lumberjack", name: "謝る木こり", base: {c:18,h:8,ac:1}, full: {c:18,h:8,ac:1} },
+        { id: "blushing_prospector", name: "赤面する探鉱者", base: {c:20,h:8,ac:1}, full: {c:20,h:8,ac:1} },
+        { id: "dismayed_hunter", name: "落胆した狩人", base: {c:22,h:35,ac:3}, full: {c:22,h:125,ac:12}, t2: true },
+        { id: "hide_n_seek_pioneer", name: "かくれんぼの開拓者", base: {c:9,h:22,ac:3}, full: {c:9,h:37,ac:9}, t2: true },
+        { id: "pouty_porter", name: "ふくれっ面の運搬者", base: {c:20,h:23,ac:2}, full: {c:20,h:83,ac:8}, t2: true },
+        { id: "shivering_trailblazer", name: "震える道開拓者", base: {c:17,h:7,ac:2}, full: {c:17,h:7,ac:2} },
+        { id: "tearful_light_miner", name: "涙の光の鉱夫", base: {c:20,h:3,ac:1}, full: {c:30,h:3,ac:4}, t2: true },
+        { id: "whale_whisperer", name: "クジラの語り部", base: {c:9,h:2,ac:1}, full: {c:9,h:2,ac:1} },
+      ]},
+      "峡谷": { en: "Valley of Triumph", spirits: [
+        { id: "backflipping_champion", name: "宙返りするチャンピオン", base: {c:20,h:10,ac:2}, full: {c:20,h:10,ac:2} },
+        { id: "bowing_medalist", name: "お辞儀するメダリスト", base: {c:20,h:10,ac:2}, full: {c:20,h:10,ac:2} },
+        { id: "cheerful_spectator", name: "陽気な観客", base: {c:20,h:15,ac:2}, full: {c:20,h:15,ac:2} },
+        { id: "confident_sightseer", name: "自信満々の観光客", base: {c:9,h:7,ac:2}, full: {c:9,h:7,ac:2} },
+        { id: "handstanding_thrillseeker", name: "逆立ちするスリル好き", base: {c:20,h:40,ac:3}, full: {c:20,h:160,ac:12}, t2: true },
+        { id: "manta_whisperer", name: "マンタの語り部", base: {c:9,h:3,ac:1}, full: {c:9,h:3,ac:1} },
+        { id: "proud_victor", name: "誇らしい勝者", base: {c:9,h:40,ac:3}, full: {c:9,h:70,ac:12}, t2: true },
+      ]},
+      "砂漠": { en: "Golden Wasteland", spirits: [
+        { id: "courageous_soldier", name: "勇敢な兵士", base: {c:9,h:19,ac:2}, full: {c:9,h:64,ac:8}, t2: true },
+        { id: "fainting_warrior", name: "気絶する戦士", base: {c:23,h:20,ac:2}, full: {c:23,h:20,ac:2} },
+        { id: "frightened_refugee", name: "怯えた難民", base: {c:23,h:8,ac:1}, full: {c:23,h:8,ac:1} },
+        { id: "lookout_scout", name: "見張り番の斥候", base: {c:24,h:15,ac:2}, full: {c:24,h:15,ac:2} },
+        { id: "saluting_captain", name: "敬礼する船長", base: {c:23,h:25,ac:3}, full: {c:23,h:25,ac:3} },
+        { id: "stealthy_survivor", name: "ステルスの生存者", base: {c:9,h:55,ac:4}, full: {c:9,h:205,ac:16}, t2: true },
+      ]},
+      "書庫": { en: "Vault of Knowledge", spirits: [
+        { id: "levitating_adept", name: "浮遊する達人", base: {c:26,h:15,ac:2}, full: {c:26,h:15,ac:2} },
+        { id: "meditating_monastic", name: "瞑想する修道士", base: {c:36,h:40,ac:3}, full: {c:36,h:40,ac:3} },
+        { id: "memory_whisperer", name: "記憶の語り部", base: {c:9,h:53,ac:4}, full: {c:9,h:203,ac:16}, t2: true },
+        { id: "polite_scholar", name: "礼儀正しい学者", base: {c:9,h:17,ac:2}, full: {c:9,h:17,ac:2} },
+        { id: "praying_acolyte", name: "祈る侍祭", base: {c:24,h:30,ac:3}, full: {c:24,h:105,ac:12}, t2: true },
+      ]},
+    };
+
+    const ELDERS = [
+      { id: "elder_isle_hair", realm: "孤島", name: "孤島の大精霊・髪型", ac: 4 },
+      { id: "elder_isle_face", realm: "孤島", name: "孤島の大精霊・フェイスアクセ", ac: 125 },
+      { id: "elder_prairie_hair", realm: "草原", name: "草原の大精霊・髪型", ac: 3 },
+      { id: "elder_prairie_face", realm: "草原", name: "草原の大精霊・フェイスアクセ", ac: 75 },
+      { id: "elder_forest_hair", realm: "雨林", name: "雨林の大精霊・髪型", ac: 6 },
+      { id: "elder_forest_face", realm: "雨林", name: "雨林の大精霊・フェイスアクセ", ac: 250 },
+      { id: "elder_valley_hair1", realm: "峡谷", name: "峡谷の大精霊・髪型①", ac: 6 },
+      { id: "elder_valley_hair2", realm: "峡谷", name: "峡谷の大精霊・髪型②", ac: 5 },
+      { id: "elder_valley_face1", realm: "峡谷", name: "峡谷の大精霊・フェイスアクセ①", ac: 150 },
+      { id: "elder_valley_face2", realm: "峡谷", name: "峡谷の大精霊・フェイスアクセ②", ac: 150 },
+      { id: "elder_wasteland_hair", realm: "砂漠", name: "砂漠の大精霊・髪型", ac: 6 },
+      { id: "elder_vault_hair", realm: "書庫", name: "書庫の大精霊・髪型", ac: 5 },
+    ];
+
+    let mode = "base";
+    let state = { regular: {}, elders: {}, seasonal: [] };
+
+    function load() {
+      try {
+        const raw = localStorage.getItem("sky_spirit_tracker_v2");
+        if (raw) state = JSON.parse(raw);
+      } catch(e) {}
+      Object.values(REALMS).forEach(r => r.spirits.forEach(s => {
+        if (state.regular[s.id] === undefined) state.regular[s.id] = false;
+      }));
+      ELDERS.forEach(e => { if (state.elders[e.id] === undefined) state.elders[e.id] = false; });
+      if (!Array.isArray(state.seasonal)) state.seasonal = [];
+    }
+
+    function save() {
+      localStorage.setItem("sky_spirit_tracker_v2", JSON.stringify(state));
+      updateDataPreview();
+    }
+
+    function setMode(m) {
+      mode = m;
+      ["mode-base","sum-mode-base"].forEach(id => document.getElementById(id)?.classList.toggle("active", m==="base"));
+      ["mode-full","sum-mode-full"].forEach(id => document.getElementById(id)?.classList.toggle("active", m==="full"));
+      renderAll();
+    }
+
+    function getCost(s) { return mode === "full" ? s.full : s.base; }
+
+    function renderRegular() {
+      const list = document.getElementById("regular-list");
+      list.innerHTML = "";
+      let totalC=0, totalH=0, totalAC=0, doneC=0, doneH=0, doneAC=0, doneCount=0, totalCount=0;
+
+      Object.entries(REALMS).forEach(([realm, data]) => {
+        const section = document.createElement("div");
+        section.className = "realm-section";
+        let rC=0, rH=0, rAC=0, rDone=0;
+        data.spirits.forEach(s => {
+          const cost = getCost(s);
+          totalCount++; rC+=cost.c; rH+=cost.h; rAC+=cost.ac;
+          totalC+=cost.c; totalH+=cost.h; totalAC+=cost.ac;
+          if (state.regular[s.id]) { rDone++; doneCount++; doneC+=cost.c; doneH+=cost.h; doneAC+=cost.ac; }
+        });
+        section.innerHTML = `
+          <div class="realm-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+            <h2>${realm} <span style="font-size:0.75rem;color:var(--muted)">(${data.en})</span></h2>
+            <div class="totals">${rDone}/${data.spirits.length}　<span class="candle">${rC}🕯️</span> <span class="heart">${rH}❤️</span> <span class="ac">${rAC}⭐</span></div>
+          </div>
+          <div class="spirit-list"></div>`;
+        const spiritList = section.querySelector(".spirit-list");
+        data.spirits.forEach(s => {
+          const done = state.regular[s.id];
+          const cost = getCost(s);
+          const row = document.createElement("div");
+          row.className = "spirit-row" + (done?" done":"") + (s.t2?" t2":"");
+          row.innerHTML = `
+            <input type="checkbox" ${done?"checked":""}>
+            <span class="spirit-name">${s.name}${s.t2?'<span class="badge">T2</span>':''}</span>
+            <span class="cost candle">${cost.c}🕯️</span>
+            <span class="cost heart">${cost.h}❤️</span>
+            <span class="cost ac">${cost.ac}⭐</span>`;
+          row.querySelector("input").addEventListener("change", e => {
+            state.regular[s.id] = e.target.checked; save(); renderAll();
+          });
+          spiritList.appendChild(row);
+        });
+        list.appendChild(section);
+      });
+
+      document.getElementById("regular-summary").innerHTML = `
+        <div class="stat-card done"><div class="label">完了精霊</div><div class="value">${doneCount}/${totalCount}</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${totalCount?(doneCount/totalCount*100):0}%"></div></div></div>
+        <div class="stat-card candle"><div class="label">残りキャンドル</div><div class="value">${totalC-doneC}</div></div>
+        <div class="stat-card heart"><div class="label">残りハート</div><div class="value">${totalH-doneH}</div></div>
+        <div class="stat-card ac"><div class="label">残り星キャンドル</div><div class="value">${totalAC-doneAC}</div></div>`;
+    }
+
+    function renderElders() {
+      const list = document.getElementById("elder-list");
+      list.innerHTML = "";
+      let totalAC=0, doneAC=0, doneCount=0;
+      ELDERS.forEach(e => { totalAC+=e.ac; if(state.elders[e.id]){doneAC+=e.ac; doneCount++;} });
+
+      document.getElementById("elder-summary").innerHTML = `
+        <div class="stat-card done"><div class="label">完了</div><div class="value">${doneCount}/${ELDERS.length}</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${doneCount/ELDERS.length*100}%"></div></div></div>
+        <div class="stat-card elder"><div class="label">残り星キャンドル</div><div class="value">${totalAC-doneAC}</div></div>
+        <div class="stat-card ac"><div class="label">合計必要</div><div class="value">${totalAC}</div></div>`;
+
+      let currentRealm = "";
+      ELDERS.forEach(e => {
+        if (e.realm !== currentRealm) {
+          currentRealm = e.realm;
+          const h = document.createElement("div");
+          h.style.cssText = "font-size:0.85rem;color:var(--muted);padding:6px 10px 2px;font-weight:600;";
+          h.textContent = currentRealm;
+          list.appendChild(h);
+        }
+        const done = state.elders[e.id];
+        const row = document.createElement("div");
+        row.className = "elder-row" + (done?" done":"");
+        row.innerHTML = `
+          <input type="checkbox" ${done?"checked":""} style="width:18px;height:18px;accent-color:var(--success);">
+          <span>${e.name}</span>
+          <span class="cost ac">${e.ac}⭐</span>`;
+        row.querySelector("input").addEventListener("change", ev => {
+          state.elders[e.id] = ev.target.checked; save(); renderAll();
+        });
+        list.appendChild(row);
+      });
+    }
+
+    function renderSummary() {
+      const container = document.getElementById("realm-summary");
+      let html = "";
+      let gC=0, gH=0, gAC=0, gDoneC=0, gDoneH=0, gDoneAC=0;
+
+      Object.entries(REALMS).forEach(([realm, data]) => {
+        let c=0,h=0,ac=0,dc=0,dh=0,dac=0,done=0;
+        data.spirits.forEach(s => {
+          const cost = getCost(s);
+          c+=cost.c; h+=cost.h; ac+=cost.ac;
+          if (state.regular[s.id]) { dc+=cost.c; dh+=cost.h; dac+=cost.ac; done++; }
+        });
+        gC+=c; gH+=h; gAC+=ac; gDoneC+=dc; gDoneH+=dh; gDoneAC+=dac;
+        html += `<div class="stat-card"><div class="label">${realm} (${done}/${data.spirits.length})</div>
+          <div style="font-size:0.9rem;margin-top:4px;"><span class="candle">${c-dc}🕯️</span> <span class="heart">${h-dh}❤️</span> <span class="ac">${ac-dac}⭐</span></div></div>`;
+      });
+
+      let eAC=0, eDoneAC=0, eDone=0;
+      ELDERS.forEach(e => { eAC+=e.ac; if(state.elders[e.id]){eDoneAC+=e.ac; eDone++;} });
+      html += `<div class="stat-card elder"><div class="label">大精霊 (${eDone}/${ELDERS.length})</div>
+        <div style="font-size:0.9rem;margin-top:4px;"><span class="ac">${eAC-eDoneAC}⭐</span></div></div>`;
+      container.innerHTML = html;
+
+      document.getElementById("total-summary").innerHTML = `
+        <table>
+          <tr><th></th><th>必要合計</th><th>完了済み</th><th>残り</th></tr>
+          <tr><td>🕯️ キャンドル</td><td>${gC}</td><td>${gDoneC}</td><td style="color:var(--candle);font-weight:700">${gC-gDoneC}</td></tr>
+          <tr><td>❤️ ハート</td><td>${gH}</td><td>${gDoneH}</td><td style="color:var(--heart);font-weight:700">${gH-gDoneH}</td></tr>
+          <tr><td>⭐ 星キャンドル（精霊）</td><td>${gAC}</td><td>${gDoneAC}</td><td style="color:var(--ac);font-weight:700">${gAC-gDoneAC}</td></tr>
+          <tr><td>⭐ 星キャンドル（大精霊）</td><td>${eAC}</td><td>${eDoneAC}</td><td style="color:var(--elder);font-weight:700">${eAC-eDoneAC}</td></tr>
+          <tr style="border-top:2px solid var(--border);"><td><strong>⭐ 星キャンドル合計</strong></td><td><strong>${gAC+eAC}</strong></td><td>${gDoneAC+eDoneAC}</td><td style="color:var(--ac);font-weight:700">${gAC+eAC-gDoneAC-eDoneAC}</td></tr>
+        </table>
+        <p class="note" style="margin-top:8px;">モード: <strong>${mode==="base"?"星座100%のみ":"全交換 (Tier2込)"}</strong></p>`;
+    }
+
+    function renderSeasonal() {
+      const list = document.getElementById("seasonal-list");
+      list.innerHTML = "";
+      if (!state.seasonal.length) {
+        list.innerHTML = `<p class="note">まだ季節精霊が登録されていません。「＋ 精霊を追加」で追加してください。</p>`;
+        return;
+      }
+      state.seasonal.forEach((s, idx) => {
+        const card = document.createElement("div");
+        card.className = "season-card";
+        card.innerHTML = `
+          <h3>${s.name||"無名"} ${s.done?"✅":""}</h3>
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px;">季節: ${s.season||"未設定"}</div>
+          <div style="display:flex;gap:8px;font-size:0.85rem;">
+            <span class="candle">${s.c||0}🕯️</span><span class="heart">${s.h||0}❤️</span><span class="ac">${s.ac||0}⭐</span>
+          </div>
+          <div class="custom-spirit">
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;">
+              <input type="checkbox" ${s.done?"checked":""}> 交換済み
+            </label>
+            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem;" onclick="removeSeasonal(${idx})">削除</button>
+          </div>`;
+        card.querySelector("input").addEventListener("change", e => {
+          state.seasonal[idx].done = e.target.checked; save(); renderSeasonal();
+        });
+        list.appendChild(card);
+      });
+    }
+
+    function addSeasonalSpirit() {
+      const name = prompt("精霊名");
+      if (!name) return;
+      const season = prompt("季節名","") || "";
+      const c = parseInt(prompt("キャンドル","0"))||0;
+      const h = parseInt(prompt("ハート","0"))||0;
+      const ac = parseInt(prompt("星キャンドル","0"))||0;
+      state.seasonal.push({id:"s_"+Date.now(), name, season, c, h, ac, done:false});
+      save(); renderSeasonal();
+    }
+
+    function removeSeasonal(idx) {
+      if (confirm("削除しますか？")) { state.seasonal.splice(idx,1); save(); renderSeasonal(); }
+    }
+
+    function renderAll() {
+      renderRegular(); renderElders(); renderSummary(); renderSeasonal(); updateDataPreview();
+    }
+
+    function updateDataPreview() {
+      const el = document.getElementById("data-preview");
+      if (el) el.textContent = JSON.stringify(state, null, 2);
+    }
+
+    function exportData() {
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `sky_spirit_tracker_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function importData() { document.getElementById("import-file").click(); }
+
+    function handleImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (data.regular || data.elders || data.seasonal) {
+            state = data; save(); renderAll(); alert("インポート完了");
+          } else alert("不正なファイル");
+        } catch(err) { alert("エラー: "+err.message); }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    }
+
+    function resetAll() {
+      if (confirm("全リセットしますか？")) {
+        state = {regular:{}, elders:{}, seasonal:[]};
+        Object.values(REALMS).forEach(r => r.spirits.forEach(s => state.regular[s.id]=false));
+        ELDERS.forEach(e => state.elders[e.id]=false);
+        save(); renderAll();
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById("panel-"+tab.dataset.tab).classList.add("active");
+      });
+    });
+
+    load();
+    renderAll();
+  </script>
+</body>
+</html>
